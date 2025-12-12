@@ -4,7 +4,6 @@ import 'package:yt_ecommerce_admin_panel/common/widgets/texts/product_title_text
 import 'package:yt_ecommerce_admin_panel/common/widgets/texts/t_brand_title_text_with_verified_icon.dart';
 import 'package:yt_ecommerce_admin_panel/features/shop/models/cart_item_model.dart';
 import 'package:yt_ecommerce_admin_panel/utils/constants/colors.dart';
-import 'package:yt_ecommerce_admin_panel/utils/constants/image_strings.dart';
 import 'package:yt_ecommerce_admin_panel/utils/constants/sizes.dart';
 import 'package:yt_ecommerce_admin_panel/utils/helpers/helper_functions.dart';
 

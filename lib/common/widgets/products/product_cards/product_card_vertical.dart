@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_navigation/get_navigation.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:yt_ecommerce_admin_panel/common/styles/shadows.dart';
 import 'package:yt_ecommerce_admin_panel/common/widgets/custom_shapes/containers/rounded_container.dart';
 import 'package:yt_ecommerce_admin_panel/common/widgets/images/t_rounded_image.dart';

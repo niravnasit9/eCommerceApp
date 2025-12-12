@@ -3,7 +3,6 @@ import 'package:lottie/lottie.dart';
 import 'package:yt_ecommerce_admin_panel/common/styles/spacing_styles.dart';
 import 'package:yt_ecommerce_admin_panel/utils/constants/sizes.dart';
 import 'package:yt_ecommerce_admin_panel/utils/constants/text_strings.dart';
-import 'package:yt_ecommerce_admin_panel/utils/helpers/helper_functions.dart';
 
 class SuccessScreen extends StatelessWidget {
   const SuccessScreen(
