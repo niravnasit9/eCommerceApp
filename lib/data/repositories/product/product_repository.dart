@@ -1,26 +1,132 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:yt_ecommerce_admin_panel/data/services/cloud_storage/firebase_storage_service.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:yt_ecommerce_admin_panel/data/abstract/products.dart';
 import 'package:yt_ecommerce_admin_panel/features/shop/models/product_model.dart';
-import 'package:yt_ecommerce_admin_panel/utils/constants/enums.dart';
 import 'package:yt_ecommerce_admin_panel/utils/exceptions/firebase_exceptions.dart';
 import 'package:yt_ecommerce_admin_panel/utils/exceptions/platform_exceptions.dart';
 
 class ProductRepository extends GetxController {
   static ProductRepository get instance => Get.find();
 
-  /// Firestore instance for database interactions.
   final _db = FirebaseFirestore.instance;
+  final _storage = FirebaseStorage.instance;
 
-  /// Get limited Featured Products
+  /// --------------------------------------------------------
+  /// CHECK IF PRODUCTS ALREADY EXIST
+  /// --------------------------------------------------------
+  Future<bool> productsAlreadyUploaded() async {
+    final snapshot = await _db.collection('Products').get();
+    return snapshot.docs.isNotEmpty;
+  }
+
+  /// --------------------------------------------------------
+  /// UPLOAD PRODUCTS FROM ASSETS
+  /// --------------------------------------------------------
+  Future<void> uploadProductsFromAssets() async {
+    try {
+      for (var product in dummyProducts) {
+        List<String> uploadedImages = [];
+
+        // Upload all images to Firebase Storage
+        if (product.images != null) {
+          for (var imgPath in product.images!) {
+            final fileName = imgPath.split('/').last;
+            final byteData = await rootBundle.load(imgPath);
+            final bytes = byteData.buffer.asUint8List();
+
+            final storageRef = _storage.ref().child('Products/$fileName');
+            await storageRef.putData(bytes);
+            final downloadUrl = await storageRef.getDownloadURL();
+
+            uploadedImages.add(downloadUrl);
+          }
+        }
+
+        product.images = uploadedImages;
+
+        // Upload thumbnail
+        if (!uploadedImages.contains(product.thumbnail)) {
+          final byteData = await rootBundle.load(product.thumbnail);
+          final bytes = byteData.buffer.asUint8List();
+          final fileName = product.thumbnail.split('/').last;
+
+          final storageRef = _storage.ref().child('Products/$fileName');
+          await storageRef.putData(bytes);
+          final downloadUrl = await storageRef.getDownloadURL();
+          product.thumbnail = downloadUrl;
+        } else {
+          product.thumbnail = uploadedImages.first;
+        }
+
+        // Upload product to Firestore
+        await _db.collection('Products').doc(product.id).set(product.toJson());
+        print('Uploaded Product: ${product.title}');
+      }
+
+      print('All products uploaded successfully.');
+    } catch (e) {
+      throw 'Error uploading products: $e';
+    }
+  }
+
+  /// --------------------------------------------------------
+  /// DELETE ALL PRODUCTS
+  /// --------------------------------------------------------
+  Future<void> deleteAllProductsFromAssets() async {
+    try {
+      final snapshot = await _db.collection('Products').get();
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+
+        // Delete all images
+        if (data['Images'] != null) {
+          for (String imageUrl in List<String>.from(data['Images'])) {
+            try {
+              await _storage.refFromURL(imageUrl).delete();
+            } catch (_) {
+              print('Image not found: $imageUrl');
+            }
+          }
+        }
+
+        // Delete main thumbnail
+        if (data['Thumbnail'] != null) {
+          try {
+            await _storage.refFromURL(data['Thumbnail']).delete();
+          } catch (_) {
+            print('Thumbnail not found: ${data['Thumbnail']}');
+          }
+        }
+
+        await doc.reference.delete();
+      }
+
+      print("All products deleted successfully.");
+    } catch (e) {
+      throw 'Error deleting products: $e';
+    }
+  }
+
+  /// --------------------------------------------------------
+  /// REPLACE PRODUCTS (DELETE + UPLOAD)
+  /// --------------------------------------------------------
+  Future<void> replaceProductsFromAssets() async {
+    await deleteAllProductsFromAssets();
+    await uploadProductsFromAssets();
+  }
+
+  /// --------------------------------------------------------
+  /// EXISTING FETCH METHODS
+  /// --------------------------------------------------------
   Future<List<ProductModel>> getFeaturedProducts() async {
     try {
       final snapshot = await _db
           .collection('Products')
           .where('IsFeatured', isEqualTo: true)
-          .limit(4)
+          .limit(500)
           .get();
       return snapshot.docs.map((e) => ProductModel.fromSnapshot(e)).toList();
     } on FirebaseException catch (e) {
@@ -32,7 +138,6 @@ class ProductRepository extends GetxController {
     }
   }
 
-  /// Get All limited Featured Products
   Future<List<ProductModel>> getAllFeaturedProducts() async {
     try {
       final snapshot = await _db
@@ -52,10 +157,9 @@ class ProductRepository extends GetxController {
   Future<List<ProductModel>> fetchProductsByQuery(Query query) async {
     try {
       final querySnapshot = await query.get();
-      final List<ProductModel> productList = querySnapshot.docs
+      return querySnapshot.docs
           .map((doc) => ProductModel.fromQuerySnapshot(doc))
           .toList();
-      return productList;
     } on FirebaseException catch (e) {
       throw TFirebaseException(e.code).message;
     } on PlatformException catch (e) {
@@ -65,10 +169,16 @@ class ProductRepository extends GetxController {
     }
   }
 
-  Future<List<ProductModel>> getFavouriteProducts(List<String> productIds) async {
+  Future<List<ProductModel>> getFavouriteProducts(
+      List<String> productIds) async {
     try {
-      final snapshot = await _db.collection('Products').where(FieldPath.documentId, whereIn: productIds).get();
-      return snapshot.docs.map((querySnapshot)=>ProductModel.fromSnapshot(querySnapshot)).toList();
+      final snapshot = await _db
+          .collection('Products')
+          .where(FieldPath.documentId, whereIn: productIds)
+          .get();
+      return snapshot.docs
+          .map((querySnapshot) => ProductModel.fromSnapshot(querySnapshot))
+          .toList();
     } on FirebaseException catch (e) {
       throw TFirebaseException(e.code).message;
     } on PlatformException catch (e) {
@@ -91,10 +201,10 @@ class ProductRepository extends GetxController {
               .where('Brand.Name', isEqualTo: brandName)
               .limit(limit)
               .get();
-      final products = querySnapshot.docs
+
+      return querySnapshot.docs
           .map((doc) => ProductModel.fromSnapshot(doc))
           .toList();
-      return products;
     } on FirebaseException catch (e) {
       throw TFirebaseException(e.code).message;
     } on PlatformException catch (e) {
@@ -107,7 +217,6 @@ class ProductRepository extends GetxController {
   Future<List<ProductModel>> getProductsForCategory(
       {required String categoryId, int limit = 4}) async {
     try {
-      // Query to get all documents where productId matches the provided categoryId & Fetch limited or unlimited based on limit
       QuerySnapshot productCategoryQuery = limit == -1
           ? await _db
               .collection('ProductCategory')
@@ -118,89 +227,25 @@ class ProductRepository extends GetxController {
               .where('categoryId', isEqualTo: categoryId)
               .limit(limit)
               .get();
-      // Extract productIds from the documents
+
       List<String> productIds = productCategoryQuery.docs
           .map((doc) => doc['productId'] as String)
           .toList();
-      // Query to get all documents where the brandId is in the list of brandIds, FieldPath.documentId to query documents in Collection
+
       final productsQuery = await _db
           .collection('Products')
           .where(FieldPath.documentId, whereIn: productIds)
           .get();
-      // Extract brand names or other relevant data from the documents
-      List<ProductModel> products = productsQuery.docs
+
+      return productsQuery.docs
           .map((doc) => ProductModel.fromSnapshot(doc))
           .toList();
-      return products;
     } on FirebaseException catch (e) {
       throw TFirebaseException(e.code).message;
     } on PlatformException catch (e) {
       throw TPlatformException(e.code).message;
     } catch (e) {
       throw 'Something went wrong. Please try again';
-    }
-  }
-
-  /// Upload dummy data to the Cloud Firestore
-  Future<void> uploadDummyData(List<ProductModel> products) async {
-    try {
-      // Upload all the products along with their images
-      final storage = Get.put(TFirebaseStorageService());
-      // Loop through each Products
-      for (var product in products) {
-        // Get image data link from local assets
-        final thumbnail =
-            await storage.getImageDataFromAssets(product.thumbnail);
-
-        // Upload image and get its URL
-        final url = await storage.uploadImageData(
-            'Products/Images', thumbnail, product.thumbnail.toString());
-
-        // Assign URL to product.thumbnail attribute
-        product.thumbnail = url;
-
-        /// Product List of images
-        if (product.images != null && product.images!.isNotEmpty) {
-          List<String> imagesUrl = [];
-          for (var image in product.images!) {
-            // Get image data link from local assets
-            final assetImage = await storage.getImageDataFromAssets(image);
-
-            // Upload image and get its URL
-            final url = await storage.uploadImageData(
-                'Products/Images', assetImage, image);
-
-            // Assign URL to product.thumbnail attribute
-            imagesUrl.add(url);
-          }
-          product.images!.clear();
-          product.images!.addAll(imagesUrl);
-        }
-
-        /// Upload Variation Images
-        if (product.productType == ProductType.variable.toString()) {
-          for (var variation in product.productVariations!) {
-            // Get image data link from local assets
-            final assetImage =
-                await storage.getImageDataFromAssets(variation.image);
-            // Upload image and get its URL
-            final url = await storage.uploadImageData(
-                'Products/Images', assetImage, variation.image);
-            // Assign URL to variation.image attribute
-            variation.image = url;
-          }
-        }
-        // Store product in Firebase
-        await _db.collection("Products").doc(product.id).set(product.toJson());
-      }
-    } on FirebaseException catch (e) {
-      throw TFirebaseException(e.code).message;
-    } on SocketException catch (e) {
-      throw SocketException(e.toString()).message;
-    } on PlatformException catch (e) {
-      throw TPlatformException(e.code).message;
-    } catch (e) {
-      throw e.toString();
     }
   }
 }
