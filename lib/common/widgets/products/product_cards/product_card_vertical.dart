@@ -94,7 +94,7 @@ class TProductCardVertical extends StatelessWidget {
                   children: [
                     TProductTitleText(title: product.title, smallSize: true),
                     const SizedBox(height: TSizes.spaceBtwItems / 2),
-                    TBrandTitleWithVerifiedIcon(title: product.brand!.name),
+                    TBrandTitleWithVerifiedIcon(title: product.brand.name),
                   ],
                 ),
               ),

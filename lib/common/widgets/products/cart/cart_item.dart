@@ -17,49 +17,124 @@ class TCartItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = THelperFunctions.isDarkMode(context);
+    
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        /// Image
-        TRoundedImage(
-          imageurl: cartItem.image ?? '',
-          width: 60,
-          height: 60,
-          isNetworkImage: true,
-          padding: const EdgeInsets.all(TSizes.sm),
-          backgroundColor: THelperFunctions.isDarkMode(context)
-              ? TColors.darkerGrey
-              : TColors.light,
+        /// Image with border radius
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(TSizes.borderRadiusMd),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: TRoundedImage(
+            imageurl: cartItem.image ?? '',
+            width: 70,
+            height: 70,
+            isNetworkImage: true,
+            padding: const EdgeInsets.all(TSizes.xs),
+            backgroundColor: dark ? TColors.darkerGrey : TColors.light,
+            fit: BoxFit.cover,
+          ),
         ),
 
         const SizedBox(width: TSizes.spaceBtwItems),
 
-        /// Title,Price & Size
+        /// Title, Brand, Price & Size
         Expanded(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TBrandTitleWithVerifiedIcon(title: cartItem.brandName ?? ''),
+              /// Brand Name
+              TBrandTitleWithVerifiedIcon(
+                title: cartItem.brandName ?? '',
+              ),
+              
+              const SizedBox(height: TSizes.xs),
+              
+              /// Product Title
               Flexible(
                 child: TProductTitleText(
                   title: cartItem.title,
                   maxLines: 1,
                 ),
               ),
-
-              /// Attributes
-              Text.rich(TextSpan(
-                  children: (cartItem.selectedVariation ?? {})
-                      .entries
-                      .map((e) => TextSpan(children: [
+              
+              const SizedBox(height: TSizes.xs),
+              
+              /// Attributes (Color, Storage, etc.)
+              if (cartItem.selectedVariation != null && 
+                  cartItem.selectedVariation!.isNotEmpty) ...[
+                Wrap(
+                  spacing: TSizes.sm,
+                  runSpacing: TSizes.xs,
+                  children: cartItem.selectedVariation!.entries.map((e) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: TSizes.sm,
+                        vertical: TSizes.xs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: dark ? TColors.darkerGrey : TColors.grey.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(TSizes.borderRadiusSm),
+                        border: Border.all(
+                          color: dark ? TColors.darkGrey : TColors.grey.withOpacity(0.3),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: RichText(
+                        text: TextSpan(
+                          children: [
                             TextSpan(
-                                text: e.key,
-                                style: Theme.of(context).textTheme.bodySmall),
+                              text: '${e.key}: ',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    fontSize: TSizes.fontSizeSm,
+                                    color: dark ? TColors.grey : TColors.darkGrey,
+                                  ),
+                            ),
                             TextSpan(
-                                text: e.value,
-                                style: Theme.of(context).textTheme.bodyLarge),
-                          ]))
-                      .toList())),
+                              text: e.value,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontSize: TSizes.fontSizeSm,
+                                    fontWeight: FontWeight.w500,
+                                    color: dark ? TColors.white : TColors.dark,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+              
+              /// Price (Optional - if you want to show price in cart item)
+              const SizedBox(height: TSizes.xs),
+              Row(
+                children: [
+                  Text(
+                    'Price: ',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: dark ? TColors.grey : TColors.darkGrey,
+                        ),
+                  ),
+                  Text(
+                    '₹${cartItem.price.toStringAsFixed(0)}',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: TColors.primary,
+                        ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
