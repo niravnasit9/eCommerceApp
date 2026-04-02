@@ -19,7 +19,7 @@ class OrderController extends GetxController {
   final cartController = CartController.instance;
   final addressController = AddressController.instance;
   final checkoutController = CheckoutController.instance;
-  final orderRepository = Get.put(OrderRepsitory());
+  final orderRepository = Get.put(OrderRepository());
 
   late Razorpay _razorpay;
   final RxBool isProcessingPayment = false.obs;

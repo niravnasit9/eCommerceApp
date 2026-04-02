@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:yt_ecommerce_admin_panel/utils/theme/theme.dart';
 
 import '../constants/enums.dart';
 
 class THelperFunctions {
-
   static DateTime getStartOfWeek(DateTime date) {
     final int daysUntilMonday = date.weekday - 1;
     final DateTime startOfWeek = date.subtract(Duration(days: daysUntilMonday));
-    return DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day, 0, 0, 0, 0, 0);
+    return DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day, 0, 0,
+        0, 0, 0);
   }
 
   static Color getOrderStatusColor(OrderStatus value) {
@@ -130,9 +131,48 @@ class THelperFunctions {
   static List<Widget> wrapWidgets(List<Widget> widgets, int rowSize) {
     final wrappedList = <Widget>[];
     for (var i = 0; i < widgets.length; i += rowSize) {
-      final rowChildren = widgets.sublist(i, i + rowSize > widgets.length ? widgets.length : i + rowSize);
+      final rowChildren = widgets.sublist(
+          i, i + rowSize > widgets.length ? widgets.length : i + rowSize);
       wrappedList.add(Row(children: rowChildren));
     }
     return wrappedList;
+  }
+
+  /// Toggle Theme between Light and Dark Mode
+  static void toggleTheme() {
+    if (Get.isDarkMode) {
+      Get.changeTheme(TAppTheme.lightTheme);
+      print('🌞 Switched to Light Mode');
+    } else {
+      Get.changeTheme(TAppTheme.darkTheme);
+      print('🌙 Switched to Dark Mode');
+    }
+  }
+
+  /// Get saved theme preference
+  static Future<bool> getSavedThemePreference() async {
+    // You can implement SharedPreferences here
+    // For now, return false (light mode)
+    return false;
+  }
+
+  /// Save theme preference
+  static Future<void> _saveThemePreference(bool isDarkMode) async {
+    // Implement SharedPreferences to save theme preference
+    // final prefs = await SharedPreferences.getInstance();
+    // await prefs.setBool('isDarkMode', isDarkMode);
+    print('💾 Theme preference saved: ${isDarkMode ? "Dark" : "Light"}');
+  }
+
+  /// Initialize theme based on saved preference
+  static Future<void> initializeTheme() async {
+    final isDarkMode = await getSavedThemePreference();
+    if (isDarkMode) {
+      Get.changeTheme(TAppTheme.darkTheme);
+      print('🌙 Theme initialized: Dark Mode');
+    } else {
+      Get.changeTheme(TAppTheme.lightTheme);
+      print('🌞 Theme initialized: Light Mode');
+    }
   }
 }

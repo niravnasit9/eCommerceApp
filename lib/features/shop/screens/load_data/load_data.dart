@@ -66,6 +66,7 @@ class _LoadDataState extends State<LoadData> {
     setState(() => _loadingBrands = true);
     _showLoadingOverlay('Syncing Brands\nPlease wait...');
     try {
+      // ✅ Use the correct method from BrandRepository
       await BrandRepository.instance.uploadAllBrands(dummyBrands);
       _hideLoadingOverlay();
       Get.snackbar(
@@ -95,6 +96,7 @@ class _LoadDataState extends State<LoadData> {
     setState(() => _loadingProducts = true);
     _showLoadingOverlay('Syncing Products\nThis may take a while...');
     try {
+      // ✅ Use syncNewProductsOnly method
       await ProductRepository.instance.syncNewProductsOnly();
       _hideLoadingOverlay();
       Get.snackbar(
@@ -124,8 +126,8 @@ class _LoadDataState extends State<LoadData> {
     setState(() => _loadingBanners = true);
     _showLoadingOverlay('Syncing Banners\nPlease wait...');
     try {
-      // Call this method to update only text data
-      await ProductRepository.instance.updateProductsWithoutImages();
+      // ✅ Use uploadBannersForceClean method from BannerRepository
+      await BannerRepository.instance.uploadBannersForceClean();
       _hideLoadingOverlay();
       Get.snackbar(
         'Success',

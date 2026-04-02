@@ -12,7 +12,7 @@ class BannerRepository extends GetxController {
 
   /// 🔥 YOUR CLOUDINARY DETAILS
   final String cloudName = "dtnfznfid";
-  final String uploadPreset = "flutter_upload"; // EXACT SAME
+  final String uploadPreset = "flutter_upload";
 
   /// 📦 LOCAL BANNER IMAGES
   final List<String> bannerAssets = [
@@ -23,6 +23,7 @@ class BannerRepository extends GetxController {
     'assets/images/banners/banner_5.jpg',
     'assets/images/banners/banner_6.jpg',
     'assets/images/banners/banner_7.jpg',
+    'assets/images/banners/banner_8.jpg',
   ];
 
   Future<List<BannerModel>> fetchBanners() async {
@@ -43,14 +44,15 @@ class BannerRepository extends GetxController {
       print("🚀 FORCE CLEAN Uploading Banners");
 
       for (var assetPath in bannerAssets) {
-        final fileName = assetPath.split('/').last;
-
+        final fileName = assetPath.split('/').last.split('.').first;
+        
         final imageUrl = await uploadToCloudinary(assetPath);
 
         final banner = BannerModel(
           imageUrl: imageUrl,
           active: true,
-          targetScreen: '/',
+          targetScreen: '/home',
+          title: 'Banner ${fileName.replaceAll('banner_', '')}',
         );
 
         /// 🔥 overwrite same doc (no duplicates)
@@ -106,11 +108,13 @@ class BannerRepository extends GetxController {
         print("➡️ Uploading: $asset");
 
         final imageUrl = await uploadToCloudinary(asset);
+        final fileName = asset.split('/').last.split('.').first;
 
         final banner = BannerModel(
           imageUrl: imageUrl,
           active: true,
-          targetScreen: '/',
+          targetScreen: '/home',
+          title: 'Banner ${fileName.replaceAll('banner_', '')}',
         );
 
         await _db.collection('Banners').add(banner.toJson());
@@ -146,7 +150,8 @@ class BannerRepository extends GetxController {
         final banner = BannerModel(
           imageUrl: imageUrl,
           active: true,
-          targetScreen: '/',
+          targetScreen: '/home',
+          title: 'New Banner',
         );
 
         await _db.collection('Banners').add(banner.toJson());

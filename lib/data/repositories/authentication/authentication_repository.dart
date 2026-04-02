@@ -5,6 +5,7 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:yt_ecommerce_admin_panel/admin/screens/admin_navigation_menu.dart';
 import 'package:yt_ecommerce_admin_panel/data/repositories/user/user_repository.dart';
 import 'package:yt_ecommerce_admin_panel/features/authentication/screens/login/login.dart';
 import 'package:yt_ecommerce_admin_panel/features/authentication/screens/onBoarding/onboarding.dart';
@@ -32,6 +33,14 @@ class AuthenticationRepository extends GetxController {
   }
 
   screenRedirect() async {
+    /// 🔥 Check admin first
+    final isAdmin = deviceStorage.read("isAdmin") ?? false;
+
+    if (isAdmin) {
+      Get.offAll(() => const AdminNavigationMenu());
+      return;
+    }
+
     final user = _auth.currentUser;
 
     if (user != null) {
@@ -39,10 +48,9 @@ class AuthenticationRepository extends GetxController {
         await TLocalStorage.init(user.uid);
         Get.offAll(() => const NavigationMenu());
       } else {
-        Get.offAll(() => VerifyEmailScreen(email: _auth.currentUser?.email));
+        Get.offAll(() => VerifyEmailScreen(email: user.email));
       }
     } else {
-      /// Local Storage
       deviceStorage.writeIfNull('IsFirstTime', true);
 
       deviceStorage.read('IsFirstTime') != true
@@ -52,21 +60,28 @@ class AuthenticationRepository extends GetxController {
   }
 
   /// [EmailAuthentication] Login
-  Future<UserCredential> loginWithEmailAndPassword(
+  Future<UserCredential?> loginWithEmailAndPassword(
       String email, String password) async {
     try {
-      return await _auth.signInWithEmailAndPassword(
+      /// 🔥 ADMIN LOGIN (WITHOUT FIREBASE)
+      if (email.trim() == "admin@gmail.com" && password.trim() == "123456") {
+        /// ✅ SAVE ADMIN SESSION
+        deviceStorage.write("isAdmin", true);
+
+        /// 👉 OPEN ADMIN PANEL
+        Get.offAll(() => const AdminNavigationMenu());
+        return null;
+      }
+
+      /// 🔥 NORMAL USER LOGIN (FIREBASE)
+      final userCredential = await _auth.signInWithEmailAndPassword(
           email: email, password: password);
+
+      return userCredential;
     } on FirebaseAuthException catch (e) {
       throw TFirebaseAuthException(e.code).message;
-    } on FirebaseException catch (e) {
-      throw TFirebaseException(e.code).message;
-    } on FormatException catch (_) {
-      throw const TFormatException();
-    } on PlatformException catch (e) {
-      throw TPlatformException(e.code).message;
     } catch (e) {
-      throw 'Something Went Wrong.Please try again.';
+      throw 'Something Went Wrong. Please try again.';
     }
   }
 
@@ -182,17 +197,25 @@ class AuthenticationRepository extends GetxController {
   /// [LogoutUser] Valid for any authentication.
   Future<void> logout() async {
     try {
-      await FirebaseAuth.instance.signOut();
+      /// Check admin session
+      final isAdmin = deviceStorage.read("isAdmin") ?? false;
+
+      if (isAdmin) {
+        /// 🔥 Admin Logout
+        deviceStorage.remove("isAdmin");
+      } else {
+        /// 🔥 Firebase User Logout
+        if (_auth.currentUser != null) {
+          await _auth.signOut();
+        }
+
+        await GoogleSignIn().signOut();
+      }
+
+      /// Redirect to Login
       Get.offAll(() => const LoginScreen());
-      await GoogleSignIn().signOut();
     } on FirebaseAuthException catch (e) {
       throw TFirebaseAuthException(e.code).message;
-    } on FirebaseException catch (e) {
-      throw TFirebaseException(e.code).message;
-    } on FormatException catch (_) {
-      throw const TFormatException();
-    } on PlatformException catch (e) {
-      throw TPlatformException(e.code).message;
     } catch (e) {
       throw 'Something Went Wrong.Please try again.';
     }
