@@ -18,7 +18,16 @@ class BrandModel {
   /// Empty Helper Function
   static BrandModel empty() => BrandModel(id: '', image: '', name: '');
 
-  /// Convert model to Json structure so you can store data in Firebase
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is BrandModel && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
+  /// Convert model to Json
   toJson() {
     return {
       'Id': id,
@@ -37,13 +46,12 @@ class BrandModel {
         id: data['Id'] ?? '',
         image: data['Image'] ?? '',
         name: data['Name'] ?? '',
-        productsCount: data['ProductsCount'] ?? '',
-        isFeatured: data['IsFeatured'] ?? '');
+        productsCount: data['ProductsCount'] ?? 0,
+        isFeatured: data['IsFeatured'] ?? false);
   }
 
   /// Map Json oriented document snapshot from Firebase to UserModel
-  factory BrandModel.fromSnapshot(
-      DocumentSnapshot<Map<String, dynamic>> document) {
+  factory BrandModel.fromSnapshot(DocumentSnapshot<Map<String, dynamic>> document) {
     if (document.data() != null) {
       final data = document.data()!;
 
@@ -51,9 +59,9 @@ class BrandModel {
           id: document.id,
           image: data['Image'] ?? '',
           name: data['Name'] ?? '',
-          productsCount: data['ProductsCount'] ?? '',
-          isFeatured: data['IsFeatured'] ?? '');
-    }else {
+          productsCount: data['ProductsCount'] ?? 0,
+          isFeatured: data['IsFeatured'] ?? false);
+    } else {
       return BrandModel.empty();
     }
   }

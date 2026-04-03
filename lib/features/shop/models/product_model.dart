@@ -77,6 +77,51 @@ class ProductModel {
         updatedAt: DateTime.now(),
       );
 
+  /// ✅ COPY WITH METHOD - For creating updated copies
+  ProductModel copyWith({
+    String? id,
+    String? title,
+    int? stock,
+    double? price,
+    double? salePrice,
+    String? thumbnail,
+    List<String>? images, // ✅ Keep as List<String>
+    String? productType,
+    String? categoryId,
+    String? shortDescription,
+    String? fullDescription,
+    List<String>? highlights,
+    Map<String, String>? specifications,
+    bool? isFeatured,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    BrandModel? brand,
+    List<ProductAttributeModel>? productAttributes,
+    List<ProductVariationModel>? productVariations,
+  }) {
+    return ProductModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      stock: stock ?? this.stock,
+      price: price ?? this.price,
+      salePrice: salePrice ?? this.salePrice,
+      thumbnail: thumbnail ?? this.thumbnail,
+      images: images ?? this.images,
+      productType: productType ?? this.productType,
+      categoryId: categoryId ?? this.categoryId,
+      shortDescription: shortDescription ?? this.shortDescription,
+      fullDescription: fullDescription ?? this.fullDescription,
+      highlights: highlights ?? this.highlights,
+      specifications: specifications ?? this.specifications,
+      isFeatured: isFeatured ?? this.isFeatured,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      brand: brand ?? this.brand,
+      productAttributes: productAttributes ?? this.productAttributes,
+      productVariations: productVariations ?? this.productVariations,
+    );
+  }
+
   /// TO JSON
   Map<String, dynamic> toJson() {
     return {
@@ -102,7 +147,9 @@ class ProductModel {
           ? Timestamp.fromDate(createdAt!)
           : FieldValue.serverTimestamp(),
 
-      'UpdatedAt': FieldValue.serverTimestamp(),
+      'UpdatedAt': updatedAt != null
+          ? Timestamp.fromDate(updatedAt!)
+          : FieldValue.serverTimestamp(),
 
       'Brand': brand.toJson(),
       'ProductAttributes': productAttributes?.map((e) => e.toJson()).toList(),
@@ -121,13 +168,17 @@ class ProductModel {
       price: double.parse((data['Price'] ?? 0).toString()),
       salePrice: double.parse((data['SalePrice'] ?? 0).toString()),
       thumbnail: data['Thumbnail'] ?? '',
-      images: List<String>.from(data['Images'] ?? []),
+      images: data['Images'] != null ? List<String>.from(data['Images']) : [],
       productType: data['ProductType'] ?? '',
       categoryId: data['CategoryId'] ?? '',
       shortDescription: data['ShortDescription'] ?? '',
       fullDescription: data['FullDescription'] ?? '',
-      highlights: List<String>.from(data['Highlights'] ?? []),
-      specifications: Map<String, String>.from(data['Specifications'] ?? {}),
+      highlights: data['Highlights'] != null
+          ? List<String>.from(data['Highlights'])
+          : [],
+      specifications: data['Specifications'] != null
+          ? Map<String, String>.from(data['Specifications'])
+          : {},
       isFeatured: data['IsFeatured'] ?? false,
       createdAt: data['CreatedAt'] != null
           ? (data['CreatedAt'] as Timestamp).toDate()

@@ -29,6 +29,40 @@ class TLoaders {
     );
   }
 
+  /// ✅ Show loading dialog
+  static void customDialog({required String message}) {
+    Get.dialog(
+      Center(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: THelperFunctions.isDarkMode(Get.context!) ? TColors.dark : TColors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 20),
+              Text(
+                message,
+                style: Theme.of(Get.context!).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
+  }
+
+  /// ✅ Hide loading dialog
+  static void hideDialog() {
+    if (Get.isDialogOpen ?? false) {
+      Get.back();
+    }
+  }
+
   static successSnackBar({required title, message = '', duration = 3}) {
     Get.snackbar(
       title,

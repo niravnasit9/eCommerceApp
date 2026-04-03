@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
@@ -16,9 +17,9 @@ class ProductRepository extends GetxController {
 
   /// 🔥 CLOUDINARY CONFIG
   final String cloudName = "dtnfznfid";
-  final String uploadPreset = "flutter_upload"; // EXACT SAME
+  final String uploadPreset = "flutter_upload";
 
-// Add this to your ProductRepository class
+  /// Get all products
   Future<List<ProductModel>> getAllProducts() async {
     try {
       final snapshot = await _db.collection('Products').get();
@@ -30,7 +31,7 @@ class ProductRepository extends GetxController {
     }
   }
 
-  /// 🔥 Upload image to Cloudinary
+  /// Upload image from asset path to Cloudinary
   Future<String> uploadToCloudinary(String assetPath, String folder) async {
     try {
       print("📦 Loading image: $assetPath");
@@ -38,8 +39,7 @@ class ProductRepository extends GetxController {
       ByteData byteData = await rootBundle.load(assetPath);
       Uint8List imageData = byteData.buffer.asUint8List();
 
-      final uri =
-          Uri.parse("https://api.cloudinary.com/v1_1/$cloudName/image/upload");
+      final uri = Uri.parse("https://api.cloudinary.com/v1_1/$cloudName/image/upload");
 
       var request = http.MultipartRequest("POST", uri);
 
@@ -73,6 +73,78 @@ class ProductRepository extends GetxController {
     }
   }
 
+  /// Upload file (from camera/gallery) to Cloudinary
+  Future<String> uploadToCloudinaryFile(File file, String folder) async {
+    try {
+      print("📦 Uploading file: ${file.path}");
+      
+      final uri = Uri.parse("https://api.cloudinary.com/v1_1/$cloudName/image/upload");
+      
+      var request = http.MultipartRequest('POST', uri);
+      request.fields['upload_preset'] = uploadPreset;
+      request.fields['folder'] = folder;
+      request.files.add(await http.MultipartFile.fromPath('file', file.path));
+      
+      final response = await request.send();
+      final resBody = await response.stream.bytesToString();
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(resBody);
+        print("✅ Uploaded to Cloudinary: ${data['secure_url']}");
+        return data['secure_url'];
+      } else {
+        print("❌ Upload failed: $resBody");
+        throw "Upload failed";
+      }
+    } catch (e) {
+      print("❌ Cloudinary upload error: $e");
+      throw "Cloudinary upload error: $e";
+    }
+  }
+
+  /// Upload multiple images to Cloudinary
+  Future<List<String>> uploadMultipleImages(List<File> images, String folder) async {
+    List<String> uploadedUrls = [];
+    for (var image in images) {
+      final url = await uploadToCloudinaryFile(image, folder);
+      uploadedUrls.add(url);
+    }
+    return uploadedUrls;
+  }
+
+  /// ✅ Save single product to Firestore
+  Future<void> saveProduct(ProductModel product) async {
+    try {
+      await _db.collection('Products').doc(product.id).set(product.toJson());
+      print("✅ Product saved to Firestore: ${product.title}");
+    } catch (e) {
+      print("❌ Error saving product: $e");
+      throw 'Failed to save product: $e';
+    }
+  }
+
+  /// ✅ Update existing product
+  Future<void> updateProduct(ProductModel product) async {
+    try {
+      await _db.collection('Products').doc(product.id).update(product.toJson());
+      print("✅ Product updated in Firestore: ${product.title}");
+    } catch (e) {
+      print("❌ Error updating product: $e");
+      throw 'Failed to update product: $e';
+    }
+  }
+
+  /// ✅ Delete product
+  Future<void> deleteProduct(String productId) async {
+    try {
+      await _db.collection('Products').doc(productId).delete();
+      print("✅ Product deleted from Firestore: $productId");
+    } catch (e) {
+      print("❌ Error deleting product: $e");
+      throw 'Failed to delete product: $e';
+    }
+  }
+
   /// CHECK IF PRODUCTS ALREADY EXIST
   Future<bool> productsAlreadyUploaded() async {
     final snapshot = await _db.collection('Products').get();
@@ -87,19 +159,15 @@ class ProductRepository extends GetxController {
       for (var product in dummyProducts) {
         print("📝 Processing: ${product.title}");
 
-        // Get existing product data
-        DocumentSnapshot existingDoc =
-            await _db.collection('Products').doc(product.id).get();
+        DocumentSnapshot existingDoc = await _db.collection('Products').doc(product.id).get();
 
         if (!existingDoc.exists) {
           print("⚠️ Product ${product.title} not found, skipping...");
           continue;
         }
 
-        Map<String, dynamic> existingData =
-            existingDoc.data() as Map<String, dynamic>;
+        Map<String, dynamic> existingData = existingDoc.data() as Map<String, dynamic>;
 
-        // Prepare update data with all text fields
         Map<String, dynamic> updatePayload = {
           'Title': product.title,
           'Stock': product.stock,
@@ -113,12 +181,10 @@ class ProductRepository extends GetxController {
           'Highlights': product.highlights,
           'Specifications': product.specifications,
           'IsFeatured': product.isFeatured,
-          'ProductAttributes':
-              product.productAttributes?.map((attr) => attr.toJson()).toList(),
+          'ProductAttributes': product.productAttributes?.map((attr) => attr.toJson()).toList(),
           'UpdatedAt': DateTime.now(),
         };
 
-        // Preserve existing images (DO NOT OVERWRITE)
         if (existingData.containsKey('Images')) {
           updatePayload['Images'] = existingData['Images'];
         }
@@ -127,22 +193,17 @@ class ProductRepository extends GetxController {
           updatePayload['Thumbnail'] = existingData['Thumbnail'];
         }
 
-        // Handle variations - preserve existing variation images
         if (product.productVariations != null) {
-          List<Map<String, dynamic>> existingVariations =
-              existingData['ProductVariations'] != null
-                  ? List<Map<String, dynamic>>.from(
-                      existingData['ProductVariations'])
-                  : [];
+          List<Map<String, dynamic>> existingVariations = existingData['ProductVariations'] != null
+              ? List<Map<String, dynamic>>.from(existingData['ProductVariations'])
+              : [];
 
           List<Map<String, dynamic>> updatedVariations = [];
 
           for (var newVariation in product.productVariations!) {
-            // Find matching existing variation by SKU or ID
             Map<String, dynamic>? existingVariation;
             for (var ev in existingVariations) {
-              if (ev['SKU'] == newVariation.sku ||
-                  ev['Id'] == newVariation.id) {
+              if (ev['SKU'] == newVariation.sku || ev['Id'] == newVariation.id) {
                 existingVariation = ev;
                 break;
               }
@@ -157,19 +218,14 @@ class ProductRepository extends GetxController {
               'AttributeValues': newVariation.attributeValues,
             };
 
-            // Preserve existing variation image URL
             if (existingVariation != null &&
                 existingVariation.containsKey('Image') &&
                 existingVariation['Image'] != null &&
                 existingVariation['Image'].toString().isNotEmpty) {
               variationData['Image'] = existingVariation['Image'];
-            } else if (newVariation.image.isNotEmpty &&
-                newVariation.image.startsWith('http')) {
-              // If it's already a URL, keep it
+            } else if (newVariation.image.isNotEmpty && newVariation.image.startsWith('http')) {
               variationData['Image'] = newVariation.image;
             } else {
-              // For new variations without existing images, keep the asset path
-              // but don't upload new images
               variationData['Image'] = '';
             }
 
@@ -179,7 +235,6 @@ class ProductRepository extends GetxController {
           updatePayload['ProductVariations'] = updatedVariations;
         }
 
-        // Perform the update
         await _db.collection('Products').doc(product.id).update(updatePayload);
         print("✅ Updated: ${product.title}");
       }
@@ -209,25 +264,18 @@ class ProductRepository extends GetxController {
           'UpdatedAt': DateTime.now(),
         };
 
-        // Update variations prices
         if (product.productVariations != null) {
           List<Map<String, dynamic>> updatedVariations = [];
 
-          // Fetch existing product to get variation images
-          DocumentSnapshot existingProduct =
-              await _db.collection('Products').doc(product.id).get();
+          DocumentSnapshot existingProduct = await _db.collection('Products').doc(product.id).get();
 
           if (existingProduct.exists) {
-            Map<String, dynamic> existingData =
-                existingProduct.data() as Map<String, dynamic>;
-            List<Map<String, dynamic>> existingVariations =
-                existingData['ProductVariations'] != null
-                    ? List<Map<String, dynamic>>.from(
-                        existingData['ProductVariations'])
-                    : [];
+            Map<String, dynamic> existingData = existingProduct.data() as Map<String, dynamic>;
+            List<Map<String, dynamic>> existingVariations = existingData['ProductVariations'] != null
+                ? List<Map<String, dynamic>>.from(existingData['ProductVariations'])
+                : [];
 
             for (var newVariation in product.productVariations!) {
-              // Find existing variation to preserve image
               Map<String, dynamic>? existingVariation;
               for (var ev in existingVariations) {
                 if (ev['SKU'] == newVariation.sku) {
@@ -245,9 +293,7 @@ class ProductRepository extends GetxController {
                 'AttributeValues': newVariation.attributeValues,
               };
 
-              // Preserve existing image
-              if (existingVariation != null &&
-                  existingVariation['Image'] != null) {
+              if (existingVariation != null && existingVariation['Image'] != null) {
                 variationUpdate['Image'] = existingVariation['Image'];
               }
 
@@ -277,11 +323,9 @@ class ProductRepository extends GetxController {
       for (var product in dummyProducts) {
         print("➡️ Processing: ${product.title}");
 
-        /// ✅ SET DATE
         product.createdAt ??= DateTime.now();
         product.updatedAt = DateTime.now();
 
-        /// ================== 1. UPLOAD PRODUCT IMAGES ==================
         List<String> uploadedImages = [];
 
         if (product.images != null) {
@@ -292,32 +336,23 @@ class ProductRepository extends GetxController {
             } else {
               uploadedImages.add(imgPath);
             }
-            uploadedImages.add(imgPath);
           }
         }
 
         product.images = uploadedImages;
 
-        /// ================== 2. UPLOAD THUMBNAIL ==================
-        final thumbUrl =
-            await uploadToCloudinary(product.thumbnail, "products/thumbnail");
-
+        final thumbUrl = await uploadToCloudinary(product.thumbnail, "products/thumbnail");
         product.thumbnail = thumbUrl;
 
-        /// ================== 3. 🔥 UPLOAD VARIATION IMAGES (HERE) ==================
         if (product.productVariations != null) {
           for (var variation in product.productVariations!) {
-            if (variation.image.isNotEmpty &&
-                variation.image.startsWith('assets')) {
-              variation.image = await uploadToCloudinary(
-                  variation.image, "products/variations");
+            if (variation.image.isNotEmpty && variation.image.startsWith('assets')) {
+              variation.image = await uploadToCloudinary(variation.image, "products/variations");
             }
           }
         }
 
-        /// ================== 4. SAVE TO FIRESTORE ==================
         await _db.collection('Products').doc(product.id).set(product.toJson());
-
         print("✅ Uploaded Product: ${product.title}");
       }
 
@@ -341,19 +376,15 @@ class ProductRepository extends GetxController {
             } else {
               uploadedImages.add(imgPath);
             }
-            uploadedImages.add(imgPath);
           }
         }
 
         product.images = uploadedImages;
 
-        final thumbUrl =
-            await uploadToCloudinary(product.thumbnail, "products/thumbnail");
-
+        final thumbUrl = await uploadToCloudinary(product.thumbnail, "products/thumbnail");
         product.thumbnail = thumbUrl;
 
         await _db.collection('Products').doc(product.id).set(product.toJson());
-
         print('Uploaded Product: ${product.title}');
       }
 
@@ -424,9 +455,7 @@ class ProductRepository extends GetxController {
   Future<List<ProductModel>> fetchProductsByQuery(Query query) async {
     try {
       final querySnapshot = await query.get();
-      return querySnapshot.docs
-          .map((doc) => ProductModel.fromSnapshot(doc))
-          .toList();
+      return querySnapshot.docs.map((doc) => ProductModel.fromSnapshot(doc)).toList();
     } on FirebaseException catch (e) {
       throw TFirebaseException(e.code).message;
     } on PlatformException catch (e) {
@@ -436,17 +465,14 @@ class ProductRepository extends GetxController {
     }
   }
 
-  Future<List<ProductModel>> getFavouriteProducts(
-      List<String> productIds) async {
+  Future<List<ProductModel>> getFavouriteProducts(List<String> productIds) async {
     try {
       final snapshot = await _db
           .collection('Products')
           .where(FieldPath.documentId, whereIn: productIds)
           .get();
 
-      return snapshot.docs
-          .map((querySnapshot) => ProductModel.fromSnapshot(querySnapshot))
-          .toList();
+      return snapshot.docs.map((querySnapshot) => ProductModel.fromSnapshot(querySnapshot)).toList();
     } on FirebaseException catch (e) {
       throw TFirebaseException(e.code).message;
     } on PlatformException catch (e) {
@@ -456,48 +482,33 @@ class ProductRepository extends GetxController {
     }
   }
 
-  Future<List<ProductModel>> getProductsForBrand(
-      {required String brandName, int limit = -1}) async {
+  Future<List<ProductModel>> getProductsForBrand({required String brandName, int limit = -1}) async {
     try {
       final querySnapshot = limit == -1
-          ? await _db
-              .collection('Products')
-              .where('Brand.Name', isEqualTo: brandName)
-              .get()
-          : await _db
-              .collection('Products')
-              .where('Brand.Name', isEqualTo: brandName)
-              .limit(limit)
-              .get();
+          ? await _db.collection('Products').where('Brand.Name', isEqualTo: brandName).get()
+          : await _db.collection('Products').where('Brand.Name', isEqualTo: brandName).limit(limit).get();
 
-      return querySnapshot.docs
-          .map((doc) => ProductModel.fromSnapshot(doc))
-          .toList();
+      return querySnapshot.docs.map((doc) => ProductModel.fromSnapshot(doc)).toList();
     } catch (e) {
       throw 'Something Went Wrong.';
     }
   }
 
-  Future<List<ProductModel>> getProductsForCategory(
-      {required String categoryId, int limit = 4}) async {
+  Future<List<ProductModel>> getProductsForCategory({required String categoryId, int limit = 4}) async {
     try {
       QuerySnapshot productCategoryQuery = await _db
           .collection('ProductCategory')
           .where('categoryId', isEqualTo: categoryId)
           .get();
 
-      List<String> productIds = productCategoryQuery.docs
-          .map((doc) => doc['productId'] as String)
-          .toList();
+      List<String> productIds = productCategoryQuery.docs.map((doc) => doc['productId'] as String).toList();
 
       final productsQuery = await _db
           .collection('Products')
           .where(FieldPath.documentId, whereIn: productIds)
           .get();
 
-      return productsQuery.docs
-          .map((doc) => ProductModel.fromSnapshot(doc))
-          .toList();
+      return productsQuery.docs.map((doc) => ProductModel.fromSnapshot(doc)).toList();
     } catch (e) {
       throw 'Something went wrong.';
     }
