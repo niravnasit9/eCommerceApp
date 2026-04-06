@@ -129,20 +129,20 @@ class ProfileScreen extends StatelessWidget {
               const Divider(),
               const SizedBox(height: TSizes.spaceBtwSections),
 
-              /// ✅ My Orders Button
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Get.to(() => const OrderScreen());
-                  },
-                  icon: const Icon(Iconsax.shopping_bag),
-                  label: const Text('My Orders'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: TSizes.md),
-                  ),
-                ),
-              ),
+              // /// ✅ My Orders Button
+              // SizedBox(
+              //   width: double.infinity,
+              //   child: OutlinedButton.icon(
+              //     onPressed: () {
+              //       Get.to(() => const OrderScreen());
+              //     },
+              //     icon: const Icon(Iconsax.shopping_bag),
+              //     label: const Text('My Orders'),
+              //     style: OutlinedButton.styleFrom(
+              //       padding: const EdgeInsets.symmetric(vertical: TSizes.md),
+              //     ),
+              //   ),
+              // ),
 
               const SizedBox(height: TSizes.spaceBtwItems),
 
@@ -166,18 +166,18 @@ class ProfileScreen extends StatelessWidget {
 
               const SizedBox(height: TSizes.spaceBtwItems),
 
-              /// Logout Button
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _showLogoutConfirmation(context, authRepo),
-                  icon: const Icon(Iconsax.logout),
-                  label: const Text('Logout'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: TSizes.md),
-                  ),
-                ),
-              ),
+              // /// Logout Button
+              // SizedBox(
+              //   width: double.infinity,
+              //   child: OutlinedButton.icon(
+              //     onPressed: () => _showLogoutConfirmation(context, authRepo),
+              //     icon: const Icon(Iconsax.logout),
+              //     label: const Text('Logout'),
+              //     style: OutlinedButton.styleFrom(
+              //       padding: const EdgeInsets.symmetric(vertical: TSizes.md),
+              //     ),
+              //   ),
+              // ),
             ],
           ),
         ),

@@ -142,7 +142,7 @@ class _AddProductFormState extends State<AddProductForm> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = THelperFunctions.isDarkMode(context);
+    THelperFunctions.isDarkMode(context);
 
     return Scaffold(
       appBar: AppBar(

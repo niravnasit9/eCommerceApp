@@ -1,12 +1,15 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
+import 'package:yt_ecommerce_admin_panel/data/repositories/banners/banner_repository.dart';
 import 'package:yt_ecommerce_admin_panel/features/shop/models/banner_model.dart';
-import 'package:yt_ecommerce_admin_panel/utils/constants/colors.dart';
+import 'package:yt_ecommerce_admin_panel/utils/popups/loaders.dart';
 
 class AdminBannerController extends GetxController {
   static AdminBannerController get instance => Get.find();
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final BannerRepository _bannerRepository = BannerRepository.instance;
   final String bannersCollection = 'Banners';
 
   final isLoading = false.obs;
@@ -42,7 +45,6 @@ class AdminBannerController extends GetxController {
       
       filteredBanners.value = allBanners;
 
-      // Calculate stats
       totalBanners.value = allBanners.length;
       activeBanners.value = allBanners.where((banner) => banner.active == true).length;
 
@@ -53,6 +55,7 @@ class AdminBannerController extends GetxController {
     } catch (e) {
       isLoading.value = false;
       print('❌ Error fetching banners: $e');
+      TLoaders.errorSnackBar(title: 'Error', message: 'Failed to fetch banners: $e');
     }
   }
 
@@ -67,25 +70,37 @@ class AdminBannerController extends GetxController {
     }
   }
 
+  /// ✅ Upload banner image to Cloudinary
+  Future<String?> uploadBannerImage(File image) async {
+    try {
+      TLoaders.customDialog(message: 'Uploading image...');
+      final imageUrl = await _bannerRepository.uploadToCloudinaryFile(image, 'banners');
+      TLoaders.hideDialog();
+      
+      if (imageUrl.isNotEmpty) {
+        TLoaders.successSnackBar(title: 'Success', message: 'Image uploaded successfully');
+        return imageUrl;
+      } else {
+        TLoaders.errorSnackBar(title: 'Error', message: 'Failed to upload image');
+        return null;
+      }
+    } catch (e) {
+      TLoaders.hideDialog();
+      TLoaders.errorSnackBar(title: 'Error', message: 'Failed to upload image: $e');
+      return null;
+    }
+  }
+
   Future<void> deleteBanner(String bannerId) async {
     try {
+      TLoaders.customDialog(message: 'Deleting banner...');
       await _db.collection(bannersCollection).doc(bannerId).delete();
       await fetchBanners();
-      Get.snackbar(
-        'Success',
-        'Banner deleted successfully',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: TColors.success,
-        colorText: TColors.white,
-      );
+      TLoaders.hideDialog();
+      TLoaders.successSnackBar(title: 'Success', message: 'Banner deleted successfully');
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to delete banner: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: TColors.error,
-        colorText: TColors.white,
-      );
+      TLoaders.hideDialog();
+      TLoaders.errorSnackBar(title: 'Error', message: 'Failed to delete banner: $e');
     }
   }
 
@@ -100,65 +115,38 @@ class AdminBannerController extends GetxController {
       
       await fetchBanners();
       
-      Get.snackbar(
-        'Success',
-        newStatus ? 'Banner activated successfully' : 'Banner deactivated successfully',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: TColors.success,
-        colorText: TColors.white,
+      TLoaders.successSnackBar(
+        title: 'Success', 
+        message: newStatus ? 'Banner activated' : 'Banner deactivated'
       );
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to update banner status: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: TColors.error,
-        colorText: TColors.white,
-      );
+      TLoaders.errorSnackBar(title: 'Error', message: 'Failed to update banner status: $e');
     }
   }
 
   Future<void> addBanner(BannerModel banner) async {
     try {
+      TLoaders.customDialog(message: 'Adding banner...');
       await _db.collection(bannersCollection).add(banner.toJson());
       await fetchBanners();
-      Get.snackbar(
-        'Success',
-        'Banner added successfully',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: TColors.success,
-        colorText: TColors.white,
-      );
+      TLoaders.hideDialog();
+      TLoaders.successSnackBar(title: 'Success', message: 'Banner added successfully');
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to add banner: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: TColors.error,
-        colorText: TColors.white,
-      );
+      TLoaders.hideDialog();
+      TLoaders.errorSnackBar(title: 'Error', message: 'Failed to add banner: $e');
     }
   }
 
   Future<void> updateBanner(BannerModel banner) async {
     try {
+      TLoaders.customDialog(message: 'Updating banner...');
       await _db.collection(bannersCollection).doc(banner.id).update(banner.toJson());
       await fetchBanners();
-      Get.snackbar(
-        'Success',
-        'Banner updated successfully',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: TColors.success,
-        colorText: TColors.white,
-      );
+      TLoaders.hideDialog();
+      TLoaders.successSnackBar(title: 'Success', message: 'Banner updated successfully');
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to update banner: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: TColors.error,
-        colorText: TColors.white,
-      );
+      TLoaders.hideDialog();
+      TLoaders.errorSnackBar(title: 'Error', message: 'Failed to update banner: $e');
     }
   }
 }

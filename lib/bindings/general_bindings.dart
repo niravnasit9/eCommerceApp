@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:yt_ecommerce_admin_panel/data/repositories/banners/banner_repository.dart';
 import 'package:yt_ecommerce_admin_panel/data/repositories/brnads/brand_repository.dart';
 import 'package:yt_ecommerce_admin_panel/data/repositories/orders/order_repository.dart';
 import 'package:yt_ecommerce_admin_panel/data/repositories/product/product_repository.dart';
@@ -13,11 +14,14 @@ class GeneralBindings extends Bindings {
   void dependencies() {
     Get.put(NetworkManager());
     Get.put(VariationController());
+    Get.put(CategoryController());
+
     Get.put(AddressController());
     Get.put(CheckoutController());
-    Get.put(BrandRepository());
-    Get.put(CategoryController());
-    Get.put(OrderRepository());
-    Get.put(ProductRepository());
+
+    Get.put(BrandRepository(), permanent: true);
+    Get.put(OrderRepository(), permanent: true);
+    Get.put(ProductRepository(), permanent: true);
+    Get.put(BannerRepository(), permanent: true);
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -39,6 +40,77 @@ class BannerRepository extends GetxController {
     }
   }
 
+  /// ✅ Upload file to Cloudinary
+  Future<String> uploadToCloudinaryFile(File file, String folder) async {
+    try {
+      print("📦 Uploading file: ${file.path}");
+      
+      final uri = Uri.parse("https://api.cloudinary.com/v1_1/$cloudName/image/upload");
+      
+      var request = http.MultipartRequest('POST', uri);
+      request.fields['upload_preset'] = uploadPreset;
+      request.fields['folder'] = folder;
+      request.files.add(await http.MultipartFile.fromPath('file', file.path));
+      
+      final response = await request.send();
+      final resBody = await response.stream.bytesToString();
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(resBody);
+        print("✅ Uploaded to Cloudinary: ${data['secure_url']}");
+        return data['secure_url'];
+      } else {
+        print("❌ Upload failed: $resBody");
+        throw "Upload failed";
+      }
+    } catch (e) {
+      print("❌ Cloudinary upload error: $e");
+      throw "Cloudinary upload error: $e";
+    }
+  }
+
+  /// Upload image from asset path to Cloudinary
+  Future<String> uploadToCloudinary(String assetPath, String folder) async {
+    try {
+      print("📦 Loading image: $assetPath");
+
+      ByteData byteData = await rootBundle.load(assetPath);
+      Uint8List imageData = byteData.buffer.asUint8List();
+
+      final uri = Uri.parse("https://api.cloudinary.com/v1_1/$cloudName/image/upload");
+
+      var request = http.MultipartRequest("POST", uri);
+
+      request.fields['upload_preset'] = uploadPreset;
+      request.fields['folder'] = folder;
+
+      request.files.add(http.MultipartFile.fromBytes(
+        'file',
+        imageData,
+        filename: "banner.png",
+      ));
+
+      print("☁️ Uploading to Cloudinary...");
+
+      var response = await request.send();
+      var resBody = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        final data = json.decode(resBody);
+        print("✅ Uploaded: ${data['secure_url']}");
+        return data['secure_url'];
+      } else {
+        print("❌ Upload Failed");
+        print("Status: ${response.statusCode}");
+        print("Response: $resBody");
+        throw "Cloudinary upload failed";
+      }
+    } catch (e) {
+      print("❌ Cloudinary ERROR: $e");
+      throw e;
+    }
+  }
+
   Future<void> uploadBannersForceClean() async {
     try {
       print("🚀 FORCE CLEAN Uploading Banners");
@@ -46,7 +118,7 @@ class BannerRepository extends GetxController {
       for (var assetPath in bannerAssets) {
         final fileName = assetPath.split('/').last.split('.').first;
         
-        final imageUrl = await uploadToCloudinary(assetPath);
+        final imageUrl = await uploadToCloudinary(assetPath, 'banners');
 
         final banner = BannerModel(
           imageUrl: imageUrl,
@@ -55,7 +127,6 @@ class BannerRepository extends GetxController {
           title: 'Banner ${fileName.replaceAll('banner_', '')}',
         );
 
-        /// 🔥 overwrite same doc (no duplicates)
         await _db.collection('Banners').doc(fileName).set(banner.toJson());
 
         print("✅ Uploaded/Updated: $fileName");
@@ -67,38 +138,6 @@ class BannerRepository extends GetxController {
     }
   }
 
-  /// 🚀 UPLOAD IMAGE TO CLOUDINARY
-  Future<String> uploadToCloudinary(String assetPath) async {
-    try {
-      final byteData = await rootBundle.load(assetPath);
-      final bytes = byteData.buffer.asUint8List();
-
-      final uri =
-          Uri.parse("https://api.cloudinary.com/v1_1/$cloudName/image/upload");
-
-      var request = http.MultipartRequest('POST', uri)
-        ..fields['upload_preset'] = uploadPreset
-        ..files.add(http.MultipartFile.fromBytes(
-          'file',
-          bytes,
-          filename: assetPath.split('/').last,
-        ));
-
-      final response = await request.send();
-      final resBody = await response.stream.bytesToString();
-
-      if (response.statusCode == 200) {
-        final data = json.decode(resBody);
-        return data['secure_url'];
-      } else {
-        print("❌ Cloudinary Error: $resBody");
-        throw "Upload failed";
-      }
-    } catch (e) {
-      throw "Cloudinary upload error: $e";
-    }
-  }
-
   /// 🚀 UPLOAD ALL BANNERS (FIRST TIME)
   Future<void> uploadBannersToCloudinary() async {
     try {
@@ -107,7 +146,7 @@ class BannerRepository extends GetxController {
       for (var asset in bannerAssets) {
         print("➡️ Uploading: $asset");
 
-        final imageUrl = await uploadToCloudinary(asset);
+        final imageUrl = await uploadToCloudinary(asset, 'banners');
         final fileName = asset.split('/').last.split('.').first;
 
         final banner = BannerModel(
@@ -132,8 +171,7 @@ class BannerRepository extends GetxController {
   Future<void> syncNewBannersOnly() async {
     try {
       final snapshot = await _db.collection('Banners').get();
-      final existingUrls =
-          snapshot.docs.map((e) => e['ImageUrl'] as String).toSet();
+      final existingUrls = snapshot.docs.map((e) => e['ImageUrl'] as String).toSet();
 
       for (var asset in bannerAssets) {
         final fileName = asset.split('/').last;
@@ -145,7 +183,7 @@ class BannerRepository extends GetxController {
           continue;
         }
 
-        final imageUrl = await uploadToCloudinary(asset);
+        final imageUrl = await uploadToCloudinary(asset, 'banners');
 
         final banner = BannerModel(
           imageUrl: imageUrl,

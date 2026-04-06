@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
@@ -17,7 +18,7 @@ class BrandRepository extends GetxController {
   /// 🔥 CLOUDINARY CONFIG
   final String cloudName = "dtnfznfid";
   final String uploadPreset = "flutter_upload"; // EXACT SAME
-  
+
   /// Get all brands
   Future<List<BrandModel>> getAllBrands() async {
     try {
@@ -154,6 +155,36 @@ class BrandRepository extends GetxController {
       throw TFirebaseException(e.code).message;
     } catch (e) {
       throw 'Error uploading brands: $e';
+    }
+  }
+
+  /// Upload file to Cloudinary
+  Future<String> uploadToCloudinaryFile(File file, String folder) async {
+    try {
+      print("📦 Uploading file: ${file.path}");
+
+      final uri =
+          Uri.parse("https://api.cloudinary.com/v1_1/$cloudName/image/upload");
+
+      var request = http.MultipartRequest('POST', uri);
+      request.fields['upload_preset'] = uploadPreset;
+      request.fields['folder'] = folder;
+      request.files.add(await http.MultipartFile.fromPath('file', file.path));
+
+      final response = await request.send();
+      final resBody = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        final data = json.decode(resBody);
+        print("✅ Uploaded to Cloudinary: ${data['secure_url']}");
+        return data['secure_url'];
+      } else {
+        print("❌ Upload failed: $resBody");
+        throw "Upload failed";
+      }
+    } catch (e) {
+      print("❌ Cloudinary upload error: $e");
+      throw "Cloudinary upload error: $e";
     }
   }
 }

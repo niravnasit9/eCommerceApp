@@ -1,10 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:yt_ecommerce_admin_panel/admin/controllers/admin_banner_controller.dart';
 import 'package:yt_ecommerce_admin_panel/features/shop/models/banner_model.dart';
 import 'package:yt_ecommerce_admin_panel/utils/constants/colors.dart';
 import 'package:yt_ecommerce_admin_panel/utils/constants/sizes.dart';
+import 'package:yt_ecommerce_admin_panel/utils/helpers/helper_functions.dart';
 
 class AddBannerForm extends StatefulWidget {
   const AddBannerForm({super.key, this.banner});
@@ -17,25 +20,129 @@ class AddBannerForm extends StatefulWidget {
 
 class _AddBannerFormState extends State<AddBannerForm> {
   final _formKey = GlobalKey<FormState>();
-  final _imageUrlController = TextEditingController();
   final _targetScreenController = TextEditingController();
   final _titleController = TextEditingController();
+
+  // Image handling
+  File? _selectedImage;
+  String? _existingImageUrl;
+  bool _isUploading = false;
   var isActive = true.obs;
+
   final controller = Get.find<AdminBannerController>();
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
     if (widget.banner != null) {
-      _imageUrlController.text = widget.banner!.imageUrl;
       _targetScreenController.text = widget.banner!.targetScreen;
       _titleController.text = widget.banner!.title;
       isActive.value = widget.banner!.active;
+      _existingImageUrl = widget.banner!.imageUrl;
     }
+  }
+
+  Future<void> _pickImage() async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(TSizes.md),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Choose Image Source',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: TSizes.spaceBtwItems),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildImageSourceOption(
+                      icon: Iconsax.camera,
+                      label: 'Camera',
+                      onTap: () => _getImage(ImageSource.camera),
+                    ),
+                    _buildImageSourceOption(
+                      icon: Iconsax.gallery,
+                      label: 'Gallery',
+                      onTap: () => _getImage(ImageSource.gallery),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: TSizes.md),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildImageSourceOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(TSizes.borderRadiusMd),
+      child: Container(
+        padding: const EdgeInsets.all(TSizes.md),
+        decoration: BoxDecoration(
+          color: THelperFunctions.isDarkMode(Get.context!)
+              ? TColors.darkerGrey
+              : TColors.light,
+          borderRadius: BorderRadius.circular(TSizes.borderRadiusMd),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 40, color: TColors.primary),
+            const SizedBox(height: TSizes.sm),
+            Text(label),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _getImage(ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: source,
+        imageQuality: 80,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+          _existingImageUrl =
+              null; // Clear existing URL when new image selected
+        });
+      }
+      Get.back(); // Close bottom sheet
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to pick image: $e');
+    }
+  }
+
+  Future<void> _removeImage() async {
+    setState(() {
+      _selectedImage = null;
+      _existingImageUrl = null;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final dark = THelperFunctions.isDarkMode(context);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.banner == null ? 'Add Banner' : 'Edit Banner'),
@@ -62,21 +169,15 @@ class _AddBannerFormState extends State<AddBannerForm> {
               ),
               const SizedBox(height: TSizes.spaceBtwItems),
 
-              /// Image URL
-              TextFormField(
-                controller: _imageUrlController,
-                decoration: const InputDecoration(
-                  labelText: 'Image URL',
-                  prefixIcon: Icon(Iconsax.image),
-                  hintText: 'Enter Cloudinary image URL',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter image URL';
-                  }
-                  return null;
-                },
+              /// Banner Image Picker
+              const Text(
+                'Banner Image',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
+              const SizedBox(height: TSizes.spaceBtwItems / 2),
+
+              _buildImagePicker(),
+
               const SizedBox(height: TSizes.spaceBtwItems),
 
               /// Target Screen
@@ -116,14 +217,28 @@ class _AddBannerFormState extends State<AddBannerForm> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _saveBanner,
+                  onPressed: (_isUploading ||
+                          (_selectedImage == null && _existingImageUrl == null))
+                      ? null
+                      : _saveBanner,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: TColors.primary,
                   ),
-                  child: Text(
-                    widget.banner == null ? 'Add Banner' : 'Update Banner',
-                    style: const TextStyle(fontSize: 16),
-                  ),
+                  child: _isUploading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          widget.banner == null
+                              ? 'Add Banner'
+                              : 'Update Banner',
+                          style: const TextStyle(fontSize: 16),
+                        ),
                 ),
               ),
             ],
@@ -133,29 +248,193 @@ class _AddBannerFormState extends State<AddBannerForm> {
     );
   }
 
-  void _saveBanner() {
+  Widget _buildImagePicker() {
+    final dark = THelperFunctions.isDarkMode(Get.context!);
+
+    return GestureDetector(
+      onTap: _pickImage,
+      child: Container(
+        width: double.infinity,
+        height: 200,
+        decoration: BoxDecoration(
+          color: dark ? TColors.darkerGrey : TColors.light,
+          borderRadius: BorderRadius.circular(TSizes.borderRadiusLg),
+          border: Border.all(
+            color: dark ? TColors.borderSecondary : TColors.borderPrimary,
+            width: 1,
+          ),
+        ),
+        child: _selectedImage != null
+            ? Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(TSizes.borderRadiusLg),
+                    child: Image.file(
+                      _selectedImage!,
+                      width: double.infinity,
+                      height: 200,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: CircleAvatar(
+                      backgroundColor: Colors.black.withOpacity(0.6),
+                      child: IconButton(
+                        icon: const Icon(Iconsax.trash,
+                            color: Colors.white, size: 18),
+                        onPressed: _removeImage,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: CircleAvatar(
+                      backgroundColor: Colors.black.withOpacity(0.6),
+                      child: IconButton(
+                        icon: const Icon(Iconsax.edit,
+                            color: Colors.white, size: 18),
+                        onPressed: _pickImage,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : (_existingImageUrl != null && _existingImageUrl!.isNotEmpty
+                ? Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius:
+                            BorderRadius.circular(TSizes.borderRadiusLg),
+                        child: Image.network(
+                          _existingImageUrl!,
+                          width: double.infinity,
+                          height: 200,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: dark ? TColors.darkerGrey : TColors.light,
+                            child: const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Iconsax.image, size: 50),
+                                SizedBox(height: TSizes.sm),
+                                Text('Image not found'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: CircleAvatar(
+                          backgroundColor: Colors.black.withOpacity(0.6),
+                          child: IconButton(
+                            icon: const Icon(Iconsax.trash,
+                                color: Colors.white, size: 18),
+                            onPressed: _removeImage,
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 8,
+                        right: 8,
+                        child: CircleAvatar(
+                          backgroundColor: Colors.black.withOpacity(0.6),
+                          child: IconButton(
+                            icon: const Icon(Iconsax.edit,
+                                color: Colors.white, size: 18),
+                            onPressed: _pickImage,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Iconsax.gallery_add,
+                        size: 60,
+                        color: dark ? TColors.grey : TColors.darkGrey,
+                      ),
+                      const SizedBox(height: TSizes.spaceBtwItems),
+                      Text(
+                        'Tap to add banner image',
+                        style: TextStyle(
+                          color: dark ? TColors.grey : TColors.darkGrey,
+                        ),
+                      ),
+                      const SizedBox(height: TSizes.xs),
+                      Text(
+                        'Supports JPG, PNG',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: dark ? TColors.grey : TColors.darkGrey,
+                        ),
+                      ),
+                    ],
+                  )),
+      ),
+    );
+  }
+
+  void _saveBanner() async {
     if (_formKey.currentState!.validate()) {
+      if (_selectedImage == null && _existingImageUrl == null) {
+        Get.snackbar(
+          'Error',
+          'Please select a banner image',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: TColors.error,
+          colorText: TColors.white,
+        );
+        return;
+      }
+
+      setState(() {
+        _isUploading = true;
+      });
+
+      String? uploadedImageUrl = _existingImageUrl;
+
+      // Upload new image if selected
+      if (_selectedImage != null) {
+        uploadedImageUrl = await controller.uploadBannerImage(_selectedImage!);
+        if (uploadedImageUrl == null || uploadedImageUrl.isEmpty) {
+          setState(() {
+            _isUploading = false;
+          });
+          return;
+        }
+      }
+
       final banner = BannerModel(
         id: widget.banner?.id ?? '',
-        imageUrl: _imageUrlController.text.trim(),
+        imageUrl: uploadedImageUrl!,
         targetScreen: _targetScreenController.text.trim(),
         title: _titleController.text.trim(),
         active: isActive.value,
       );
 
       if (widget.banner == null) {
-        controller.addBanner(banner);
+        await controller.addBanner(banner);
       } else {
-        controller.updateBanner(banner);
+        await controller.updateBanner(banner);
       }
-      
+
+      setState(() {
+        _isUploading = false;
+      });
+
       Get.back();
     }
   }
 
   @override
   void dispose() {
-    _imageUrlController.dispose();
     _targetScreenController.dispose();
     _titleController.dispose();
     super.dispose();
