@@ -7,7 +7,6 @@ import 'package:yt_ecommerce_admin_panel/common/widgets/texts/section_heading.da
 import 'package:yt_ecommerce_admin_panel/data/repositories/authentication/authentication_repository.dart';
 import 'package:yt_ecommerce_admin_panel/features/personalization/controllers/user_controller.dart';
 import 'package:yt_ecommerce_admin_panel/features/personalization/screens/profile/widgets/profile_menu.dart';
-import 'package:yt_ecommerce_admin_panel/features/shop/screens/order/order.dart';
 import 'package:yt_ecommerce_admin_panel/utils/constants/colors.dart';
 import 'package:yt_ecommerce_admin_panel/utils/constants/image_strings.dart';
 import 'package:yt_ecommerce_admin_panel/utils/constants/sizes.dart';
@@ -182,35 +181,6 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  void _showLogoutConfirmation(
-      BuildContext context, AuthenticationRepository authRepo) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Logout'),
-          content: const Text('Are you sure you want to logout?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await authRepo.logout();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: TColors.primary,
-              ),
-              child: const Text('Logout'),
-            ),
-          ],
-        );
-      },
     );
   }
 
