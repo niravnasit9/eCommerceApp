@@ -20,11 +20,9 @@ class _LoadDataState extends State<LoadData> {
   bool _loadingBrands = false;
   bool _loadingProducts = false;
   bool _loadingBanners = false;
-  String _loadingLabel = '';
 
   // ─── Helper: show full-screen blocking progress overlay ───────────────────
   void _showLoadingOverlay(String label) {
-    setState(() => _loadingLabel = label);
     showDialog(
       context: context,
       barrierDismissible: false,

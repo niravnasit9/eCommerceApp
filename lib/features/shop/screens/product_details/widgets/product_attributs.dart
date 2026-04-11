@@ -77,7 +77,7 @@ class TProductAttributes extends StatelessWidget {
 
                   /// Variation Description
                   TProductTitleText(
-                    title:controller.selectedVariation.value.description?? '',
+                    title: controller.selectedVariation.value.description ?? '',
                     smallSize: true,
                     maxLines: 4,
                   ),

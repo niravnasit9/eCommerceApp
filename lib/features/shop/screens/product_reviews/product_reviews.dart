@@ -39,4 +39,3 @@ class ProductReviewsScreen extends StatelessWidget {
     );
   }
 }
-
