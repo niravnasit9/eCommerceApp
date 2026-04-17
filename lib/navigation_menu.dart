@@ -48,8 +48,8 @@ class NavigationController extends GetxController {
 
   final screens = [
     const HomeScreen(),
-    StoreScreen(
-      product: ProductModel.empty(),
+    const StoreScreen(
+      // product: ProductModel.empty(),
     ),
     FavouriteScreen(
       product: ProductModel.empty(),

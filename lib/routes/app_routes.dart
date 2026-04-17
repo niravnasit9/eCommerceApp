@@ -20,7 +20,7 @@ import 'package:yt_ecommerce_admin_panel/routes/routes.dart';
 class AppRoutes {
   static final pages = [
     GetPage(name: TRoutes.home, page: () => const HomeScreen()),
-    GetPage(name: TRoutes.store, page: () =>  StoreScreen(product: ProductModel.empty(),)),
+    GetPage(name: TRoutes.store, page: () =>  StoreScreen()),
     GetPage(name: TRoutes.favourites, page: () => FavouriteScreen(product: ProductModel.empty(),)),
     GetPage(name: TRoutes.settings, page: () => const SettingsScreen()),
     GetPage(name: TRoutes.productReviews, page: () => const ProductReviewsScreen()),

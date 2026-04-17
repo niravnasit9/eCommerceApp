@@ -8,31 +8,27 @@ import 'package:yt_ecommerce_admin_panel/common/widgets/layouts/grid_layout.dart
 import 'package:yt_ecommerce_admin_panel/common/widgets/products/cart/cart_menu_icon.dart';
 import 'package:yt_ecommerce_admin_panel/common/widgets/shimmers/brand_shimmer.dart';
 import 'package:yt_ecommerce_admin_panel/common/widgets/texts/section_heading.dart';
-import 'package:yt_ecommerce_admin_panel/features/shop/controller/category_controller.dart';
 import 'package:yt_ecommerce_admin_panel/features/shop/controller/brand_controller.dart';
-import 'package:yt_ecommerce_admin_panel/features/shop/models/product_model.dart';
 import 'package:yt_ecommerce_admin_panel/features/shop/screens/brands/all_brands.dart';
 import 'package:yt_ecommerce_admin_panel/features/shop/screens/brands/brand_products.dart';
-import 'package:yt_ecommerce_admin_panel/features/shop/screens/store/widget/category_tab.dart';
+import 'package:yt_ecommerce_admin_panel/features/shop/screens/store/widget/brand_tab.dart';
 import 'package:yt_ecommerce_admin_panel/utils/constants/colors.dart';
 import 'package:yt_ecommerce_admin_panel/utils/constants/sizes.dart';
 import 'package:yt_ecommerce_admin_panel/utils/helpers/helper_functions.dart';
 
 class StoreScreen extends StatelessWidget {
-  const StoreScreen({super.key, required this.product});
-
-  final ProductModel product;
+  const StoreScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final brandController = Get.put(BrandController());
-    final categories = CategoryController.instance.featuredCategories;
+    final featuredBrands = brandController.featuredBrands;
+    
     return DefaultTabController(
-      length: categories.length,
+      length: featuredBrands.length,
       child: Scaffold(
         appBar: TAppBar(
-          title:
-              Text("Store", style: Theme.of(context).textTheme.headlineMedium),
+          title: Text("Store", style: Theme.of(context).textTheme.headlineMedium),
           actions: const [
             TCartCounterIcon(),
           ],
@@ -54,7 +50,7 @@ class StoreScreen extends StatelessWidget {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     children: [
-                      ///   Search Bar
+                      /// Search Bar
                       const SizedBox(height: TSizes.spaceBtwItems),
                       const TSearchContainer(
                         text: 'Search in Store',
@@ -64,7 +60,7 @@ class StoreScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: TSizes.spaceBtwSections),
 
-                      ///   Featured Brands
+                      /// Featured Brands Section
                       TSectionHeading(
                         title: 'Featured Brands',
                         onPressed: () => Get.to(() => const AllBrandsScreen()),
@@ -89,38 +85,36 @@ class StoreScreen extends StatelessWidget {
                           }
 
                           return TGridLayout(
-                              mainAxisExtent: 80,
-                              itemCount: brandController.featuredBrands.length,
-                              itemBuilder: (_, index) {
-                                final brand =
-                                    brandController.featuredBrands[index];
-                                return TBrandCard(
-                                  showBorder: true,
-                                  brand: brand,
-                                  onTap: () =>
-                                      Get.to(() => BrandProducts(brand: brand)),
-                                );
-                              });
+                            mainAxisExtent: 80,
+                            itemCount: brandController.featuredBrands.length,
+                            itemBuilder: (_, index) {
+                              final brand = brandController.featuredBrands[index];
+                              return TBrandCard(
+                                showBorder: true,
+                                brand: brand,
+                                onTap: () => Get.to(() => BrandProducts(brand: brand)),
+                              );
+                            },
+                          );
                         },
                       ),
                     ],
                   ),
                 ),
                 bottom: TTabBar(
-                  tabs: categories
-                      .map((category) => Tab(child: Text(category.name)))
+                  tabs: featuredBrands
+                      .map((brand) => Tab(child: Text(brand.name)))
                       .toList(),
+                  // isScrollable: true,
                 ),
               ),
             ];
           },
           body: TabBarView(
-              children: categories
-                  .map((category) => TCategoryTab(
-                        category: category,
-                        product: product,
-                      ))
-                  .toList()),
+            children: featuredBrands
+                .map((brand) => BrandTab(brand: brand))
+                .toList(),
+          ),
         ),
       ),
     );

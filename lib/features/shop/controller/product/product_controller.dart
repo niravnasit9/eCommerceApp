@@ -117,9 +117,9 @@ class ProductController extends GetxController {
         }
       }
       if (largestPrice == largestPrice) {
-        return "₹${largestPrice.toStringAsFixed(0)}";
+        return largestPrice.toStringAsFixed(0);
       } else {
-        return '₹${smallestPrice.toStringAsFixed(0)} - ₹${largestPrice.toStringAsFixed(0)}';
+        return '${smallestPrice.toStringAsFixed(0)} - ${largestPrice.toStringAsFixed(0)}';
       }
     }
   }
